@@ -1,0 +1,10 @@
+-- load the library
+local hub = loadstring(game:HttpGet("https://raw.githubusercontent.com/IslamicHubLib/Islam/refs/heads/main/IslamicHubLibOPENSOURCE", true))()
+local Main = hub:AddTab("Main")
+Main:AddSection("Automatics")
+Main:AddButton("Auto Rebirth", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/SzWxv6ax", true))()
+end)
+Main:AddButton("Auto Click (Upgraded)", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/fpeZef0A", true))()
+end)
