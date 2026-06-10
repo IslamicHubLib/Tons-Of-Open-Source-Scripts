@@ -1,37 +1,17 @@
 local hub = loadstring(game:HttpGet("https://raw.githubusercontent.com/IslamicHubLib/Islam/refs/heads/main/IslamicHubLibOPENSOURCE", true))()
 local main = hub:AddTab("Main")
-
-local initialmessage = "You need to get your Handler Key! (Start a race to get it and just die after!)"
-local capturedkey = nil
+local initialmessage = "Get Handler Key (Start race & die)"
+local capturedkey = "No Key Found!"
 local isfarming = false
-
-main:AddSection("Automatics")
-main:AddButton("Fire Remote", function()
-    local startfarm = game:GetService("ReplicatedStorage").Remotes.GeneralActions
-    startfarm:FireServer(
-        "EndData",
-        {
-            Key = capturedkey or "theykeyhere",
-            Result = {
-                Distance = 16.1,
-                CloseCalls = 1,
-                Alivetime = 7
-            }
-        }
-    )
-end)
-
-main:AddSection("Key Grabber & Farm")
-
+main:AddSection("Farm")
 local keyinput = main:AddInput("Key:", initialmessage, "Waiting for key...", function(text)
     if text ~= initialmessage then
         capturedkey = text
     end
 end)
-
 task.spawn(function()
     while true do
-        if capturedkey and capturedkey ~= initialmessage then
+        if capturedkey and capturedkey ~= initialmessage and capturedkey ~= "No Key Found!" then
             print("Captured: " .. capturedkey)
             keyinput:Set(capturedkey)
             break
@@ -39,34 +19,115 @@ task.spawn(function()
         task.wait(1)
     end
 end)
-
+local function isvalidkey(val)
+    if type(val) ~= "string" then return false end
+    if #val < 6 or #val > 64 then return false end
+    local lower = val:lower()
+    if lower == "enddata" or lower == "result" or lower == "distance" or lower == "closecalls" or lower == "alivetime" then
+        return false
+    end
+    return val:match("^%w+$") ~= nil
+end
+local function scanvalue(val)
+    if isvalidkey(val) then return val end
+    if type(val) == "table" then
+        for k, v in pairs(val) do
+            local res = scanvalue(v) or scanvalue(k)
+            if res then return res end
+        end
+    end
+    return nil
+end
+local function scanstack()
+    for level = 2, 5 do
+        local ok, func = pcall(function()
+            if debug and debug.info then
+                return debug.info(level, "f")
+            elseif getinfo then
+                local info = getinfo(level)
+                return info and info.func
+            end
+        end)
+        
+        if ok and func and type(func) == "function" then
+            local gc = getconstants or (debug and debug.getconstants)
+            if gc then
+                local ok2, consts = pcall(gc, func)
+                if ok2 and type(consts) == "table" then
+                    for _, c in ipairs(consts) do
+                        if isvalidkey(c) then return c end
+                    end
+                end
+            end
+            
+            local gu = debug and debug.getupvalue
+            if gu then
+                for i = 1, 100 do
+                    local ok2, name, val = pcall(gu, func, i)
+                    if not ok2 or not name then break end
+                    if isvalidkey(val) then return val end
+                    if type(val) == "table" then
+                        local res = scanvalue(val)
+                        if res then return res end
+                    end
+                end
+            end
+        end
+        
+        local gl = debug and debug.getlocal
+        if gl then
+            for i = 1, 100 do
+                local ok2, name, val = pcall(gl, level, i)
+                if not ok2 or not name then break end
+                if isvalidkey(val) then return val end
+                if type(val) == "table" then
+                    local res = scanvalue(val)
+                    if res then return res end
+                end
+            end
+        end
+    end
+    return nil
+end
 local oldnamecall
 oldnamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local args = {...}
     local method = getnamecallmethod()
     
     if method == "FireServer" and self.Name == "GeneralActions" then
-        local callingscript = getcallingscript()
-        if callingscript then
-            local ok, code = pcall(decompile, callingscript)
-            if ok and code then
-                for line in string.gmatch(code, "[^\r\n]+") do
-                    local matchedkey = string.match(line, 'Key%s*=%s*["\']([^"\']+)["\']') or string.match(line, 'key%s*=%s*["\']([^"\']+)["\']')
-                    if matchedkey then
-                        capturedkey = matchedkey
-                        break
-                    end
+        local found = scanstack()
+        if found then
+            capturedkey = found
+        end
+        
+        if capturedkey == "No Key Found!" or not capturedkey then
+            for _, arg in ipairs(args) do
+                local res = scanvalue(arg)
+                if res then
+                    capturedkey = res
+                    break
                 end
             end
         end
         
-        if not capturedkey and type(args[2]) == "table" and args[2].Key then
-            capturedkey = args[2].Key
+        if capturedkey == "No Key Found!" or not capturedkey then
+            local callingscript = getcallingscript()
+            if callingscript then
+                local ok, code = pcall(decompile, callingscript)
+                if ok and code then
+                    for line in string.gmatch(code, "[^\r\n]+") do
+                        local matchedkey = string.match(line, 'Key%s*=%s*["\']([^"\']+)["\']') or string.match(line, 'key%s*=%s*["\']([^"\']+)["\']')
+                        if matchedkey then
+                            capturedkey = matchedkey
+                            break
+                        end
+                    end
+                end
+            end
         end
     end
     return oldnamecall(self, ...)
 end)
-
 main:AddToggle("Start Farm", false, function(state)
     isfarming = state
     if isfarming then
@@ -77,7 +138,7 @@ main:AddToggle("Start Farm", false, function(state)
                     startfarm:FireServer(
                         "EndData",
                         {
-                            Key = capturedkey or "INPUT YOUR KEY NERD ",
+                            Key = capturedkey or "No Key Found!",
                             Result = {
                                 Distance = 16.1,
                                 CloseCalls = 1,
