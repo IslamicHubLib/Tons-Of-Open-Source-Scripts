@@ -1,14 +1,28 @@
 local hub = loadstring(game:HttpGet("https://raw.githubusercontent.com/IslamicHubLib/Islam/refs/heads/main/IslamicHubLibOPENSOURCE", true))()
 local main = hub:AddTab("Main")
+
 local initialmessage = "Get Handler Key (Start race & die)"
 local capturedkey = "No Key Found!"
 local isfarming = false
+
+-- Get the source name of this running script to filter it out
+local hooksource = ""
+pcall(function()
+    if debug and debug.info then
+        hooksource = debug.info(1, "s")
+    elseif getinfo then
+        hooksource = getinfo(1).source
+    end
+end)
+
 main:AddSection("Farm")
+
 local keyinput = main:AddInput("Key:", initialmessage, "Waiting for key...", function(text)
     if text ~= initialmessage then
         capturedkey = text
     end
 end)
+
 task.spawn(function()
     while true do
         if capturedkey and capturedkey ~= initialmessage and capturedkey ~= "No Key Found!" then
@@ -19,12 +33,12 @@ task.spawn(function()
         task.wait(1)
     end
 end)
+
 local function isvalidkey(val)
     if type(val) ~= "string" then return false end
     if #val < 6 or #val > 64 then return false end
     
     local lower = val:lower()
-    -- Ignored environment and hook keywords
     local ignored = {
         ["enddata"] = true,
         ["result"] = true,
@@ -41,12 +55,14 @@ local function isvalidkey(val)
         ["game"] = true,
         ["service"] = true,
         ["replicatedstorage"] = true,
-        ["remotes"] = true
+        ["remotes"] = true,
+        ["no key found!"] = true
     }
     
     if ignored[lower] then return false end
     return val:match("^%w+$") ~= nil
 end
+
 local function scanvalue(val)
     if isvalidkey(val) then return val end
     if type(val) == "table" then
@@ -57,9 +73,9 @@ local function scanvalue(val)
     end
     return nil
 end
+
 local function scanstack()
-    -- Changed level start to 3 to skip the hook's own frame
-    for level = 3, 6 do
+    for level = 3, 10 do
         local ok, func = pcall(function()
             if debug and debug.info then
                 return debug.info(level, "f")
@@ -70,6 +86,20 @@ local function scanstack()
         end)
         
         if ok and func and type(func) == "function" then
+            -- Get the source of the function we are checking
+            local srcok, src = pcall(function()
+                if debug and debug.info then
+                    return debug.info(func, "s")
+                elseif getinfo then
+                    return getinfo(func).source
+                end
+            end)
+            
+            -- If the function is from our hook script, skip it
+            if srcok and src == hooksource then
+                continue
+            end
+            
             local gc = getconstants or (debug and debug.getconstants)
             if gc then
                 local ok2, consts = pcall(gc, func)
@@ -109,6 +139,7 @@ local function scanstack()
     end
     return nil
 end
+
 local oldnamecall
 oldnamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local args = {...}
@@ -148,6 +179,7 @@ oldnamecall = hookmetamethod(game, "__namecall", function(self, ...)
     end
     return oldnamecall(self, ...)
 end)
+
 main:AddToggle("Start Farm", false, function(state)
     isfarming = state
     if isfarming then
