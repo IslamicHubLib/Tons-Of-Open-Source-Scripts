@@ -4,16 +4,7 @@ local main = hub:AddTab("Main")
 local initialmessage = "Get Handler Key (Start race & die)"
 local capturedkey = "No Key Found!"
 local isfarming = false
-
--- Get the source name of this running script to filter it out
-local hooksource = ""
-pcall(function()
-    if debug and debug.info then
-        hooksource = debug.info(1, "s")
-    elseif getinfo then
-        hooksource = getinfo(1).source
-    end
-end)
+local self_firing = false
 
 main:AddSection("Farm")
 
@@ -86,20 +77,6 @@ local function scanstack()
         end)
         
         if ok and func and type(func) == "function" then
-            -- Get the source of the function we are checking
-            local srcok, src = pcall(function()
-                if debug and debug.info then
-                    return debug.info(func, "s")
-                elseif getinfo then
-                    return getinfo(func).source
-                end
-            end)
-            
-            -- If the function is from our hook script, skip it
-            if srcok and src == hooksource then
-                continue
-            end
-            
             local gc = getconstants or (debug and debug.getconstants)
             if gc then
                 local ok2, consts = pcall(gc, func)
@@ -142,6 +119,10 @@ end
 
 local oldnamecall
 oldnamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    if self_firing then 
+        return oldnamecall(self, ...) 
+    end
+    
     local args = {...}
     local method = getnamecallmethod()
     
@@ -187,6 +168,7 @@ main:AddToggle("Start Farm", false, function(state)
             local startfarm = game:GetService("ReplicatedStorage").Remotes.GeneralActions
             while isfarming do
                 pcall(function()
+                    self_firing = true
                     startfarm:FireServer(
                         "EndData",
                         {
@@ -199,6 +181,7 @@ main:AddToggle("Start Farm", false, function(state)
                         }
                     )
                 end)
+                self_firing = false
                 task.wait()
             end
         end)
