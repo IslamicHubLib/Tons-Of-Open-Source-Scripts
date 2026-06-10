@@ -22,10 +22,29 @@ end)
 local function isvalidkey(val)
     if type(val) ~= "string" then return false end
     if #val < 6 or #val > 64 then return false end
+    
     local lower = val:lower()
-    if lower == "enddata" or lower == "result" or lower == "distance" or lower == "closecalls" or lower == "alivetime" then
-        return false
-    end
+    -- Ignored environment and hook keywords
+    local ignored = {
+        ["enddata"] = true,
+        ["result"] = true,
+        ["distance"] = true,
+        ["closecalls"] = true,
+        ["alivetime"] = true,
+        ["getnamecallmethod"] = true,
+        ["hookmetamethod"] = true,
+        ["getcallingscript"] = true,
+        ["decompile"] = true,
+        ["fireserver"] = true,
+        ["generalactions"] = true,
+        ["nokeysfound"] = true,
+        ["game"] = true,
+        ["service"] = true,
+        ["replicatedstorage"] = true,
+        ["remotes"] = true
+    }
+    
+    if ignored[lower] then return false end
     return val:match("^%w+$") ~= nil
 end
 local function scanvalue(val)
@@ -39,7 +58,8 @@ local function scanvalue(val)
     return nil
 end
 local function scanstack()
-    for level = 2, 5 do
+    -- Changed level start to 3 to skip the hook's own frame
+    for level = 3, 6 do
         local ok, func = pcall(function()
             if debug and debug.info then
                 return debug.info(level, "f")
